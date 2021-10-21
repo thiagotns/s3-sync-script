@@ -15,10 +15,19 @@
 import os
 import json
 import requests
+import pandas as pd
+import csv
 
-URL_YOUMAIL_API_LIST = "https://dataapi.youmail.com/directory/spammers/v2/partial/since/20210109T150000Z/list"
+# +
+URL_YOUMAIL_API_LIST = "https://dataapi.youmail.com/directory/spammers/v2/partial/since/"
+URL_YOUMAIL_API_FULL = "https://dataapi.youmail.com/api/v3/spammerlist/full"
 URL_YOUMAIL_API_PARTIAL_HOUR = "https://dataapi.youmail.com/api/v3/spammerlist/partial/"
 
+CSV_FOLDER = "files"
+YOUMAIL_FULL_FILENAME = "spam-number-file.csv"
+
+
+# -
 
 def get_credentials():
     with open("credentials.json") as file:
@@ -43,6 +52,7 @@ def get_youmail_api_headers():
 
 
 # +
+#get partial spam list by datetime
 def get_youmail_partial_list(datetime):
     
     try:
@@ -55,4 +65,49 @@ def get_youmail_partial_list(datetime):
         
     return response.json()
 
-get_youmail_partial_list("20211020T160000Z")
+#hourly = get_youmail_partial_list("20211020T160000Z")
+
+
+# -
+
+#get full spam list
+def get_youmail_full_list():
+    
+    try:
+        headers = get_youmail_api_headers()
+        response = requests.get(URL_YOUMAIL_API_FULL, headers=headers)
+    
+    except requests.exceptions.RequestException as e:
+        print(e)
+        raise SystemExit(e)
+        
+    return response.json()
+
+
+#get the full list from api, transform, and save it as csv file
+def save_youmail_full():
+
+    try:
+    
+        #get full spam list from youlist API
+        data = get_youmail_full_list()
+
+        #transform investigationReasons data
+        for d in data['phoneNumbers']:
+            if d['investigationReasons']:
+                for i in d['investigationReasons']:
+                    d[i['name']] = i['certainty']
+
+
+        df = pd.DataFrame(data['phoneNumbers'])
+        df.drop('investigationReasons', axis=1, inplace=True)
+        df.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
+        df.to_csv(CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME, index=False)
+    
+    except Exception as e:
+        print(e)
+        raise SystemExit(e)
+        
+    return
+
+save_youmail_full()
