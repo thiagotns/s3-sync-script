@@ -1,3 +1,4 @@
 config-ignore/
+credentials.json
 
 .ipynb_checkpoints/
