@@ -1,17 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.13.0
-#   kernelspec:
-#     display_name: Python 3
-#     language: python
-#     name: python3
-# ---
-
 import os
 import sys
 import json
@@ -20,21 +6,17 @@ import pandas as pd
 import csv
 from datetime import datetime
 import boto3
+import logging
 
-# +
 URL_YOUMAIL_API_LIST = "https://dataapi.youmail.com/directory/spammers/v2/partial/since/"
 URL_YOUMAIL_API_FULL = "https://dataapi.youmail.com/api/v3/spammerlist/full"
 URL_YOUMAIL_API_PARTIAL_HOUR = "https://dataapi.youmail.com/api/v3/spammerlist/partial/"
-
 CSV_FOLDER = "files"
 YOUMAIL_FULL_FILENAME = "spam-number-file.csv"
 YOUMAIL_PART_FILENAME = "spam-number-file_"
-
 BUCKET_NAME = 'youmail'
 
-
-# -
-
+#get credentials from credentials.json
 def get_credentials():
     with open("credentials.json") as file:
         cf = json.load(file)
@@ -66,7 +48,7 @@ def get_youmail_partial_list(datetime):
         response = requests.get(URL_YOUMAIL_API_PARTIAL_HOUR + datetime, headers=headers)
     
     except requests.exceptions.RequestException as e:
-        print(e)
+        logging.exception(e)
         raise SystemExit(e)
         
     return response.json()
@@ -80,14 +62,21 @@ def get_youmail_partial_list(datetime):
 def get_youmail_full_list():
     
     try:
+        logging.info("Downloading full file list from YOUMAIL api")
+
         headers = get_youmail_api_headers()
         response = requests.get(URL_YOUMAIL_API_FULL, headers=headers)
     
+        result = response.json()
+
+        logging.info(f"Download Finished: totalPhoneNumbersCount = {result['totalPhoneNumbersCount']}")
+
+        return result
     except requests.exceptions.RequestException as e:
-        print(e)
+        logging.exception(e)
         raise SystemExit(e)
         
-    return response.json()
+    
 
 
 #get the full list from api, transform, and save it as csv file
@@ -112,11 +101,13 @@ def save_youmail_full():
         filename = CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME
         
         df.to_csv(filename, index=False)
-    
+
+        logging.info(f"File \"{filename}\" saved to local filesystem")
+
         return filename
     
     except Exception as e:
-        print(e)
+        logging.exception(e)
         raise SystemExit(e)
         
     return
@@ -177,12 +168,14 @@ def save_this_hour_partial_spam_list():
         return filename
     
     except Exception as e:
-        print(e)
+        logging.exception(e)
         raise SystemExit(e)
 
 
 #upload a file to s3
 def upload_file(file_name):
+
+    logging.info(f"Uploading file \"{file_name}\" to S3")
 
     cfg = get_credentials()
     
@@ -193,23 +186,29 @@ def upload_file(file_name):
     try:
     
         s3.upload_file(file_name, BUCKET_NAME, object_name)
-        print("Upload Successful")
+        logging.info(f"Upload Successful (S3): bucket=\"{BUCKET_NAME}\" object_name=\"{file_name}\"")
         return True
     
     except Exception as e:
-        print(e)
+        logging.exception(e)
         return False
 
 
 def sync_full():
     try:
-        
+
+        logging.info("Full Sync starting...")
+
         full_csv = save_youmail_full()
         
-        return upload_file(full_csv)
+        result =  upload_file(full_csv)
+
+        logging.info("Full Sync Finished")
+
+        return result
     
     except Exception as e:
-        print(e)
+        logging.exception(e)
         return False
 
 
@@ -221,22 +220,22 @@ def sync_partial():
         return upload_file(partial_csv)
     
     except Exception as e:
-        print(e)
+        logging.exception(e)
         raise SystemExit(e)
 
 
 def main(args):
     
     if len(args) == 0:
-        print("Please use FULL or PARTIAL parameter")
+        logging.error("Please use FULL or PARTIAL parameter")
         return
     
     if 'FULL' not in args and 'PARTIAL' not in args:
-        print("Please use FULL or PARTIAL parameter")
+        logging.errorint("Please use FULL or PARTIAL parameter")
         return
 
     if 'FULL' in args and 'PARTIAL' in args:
-        print("Use only one option FULL or PARTIAL")
+        logging.error("Use only one option FULL or PARTIAL")
         return
     
     if 'FULL' in args:
@@ -247,7 +246,12 @@ def main(args):
 
 
 if __name__ == "__main__":
+    
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.info("------------------    Script Start    ------------------")
+    
     #main(sys.argv[1:])
     main('FULL')
-    main('PARTIAL')
+    #main('PARTIAL')
     
+    logging.info("------------------    Script End      ------------------")
