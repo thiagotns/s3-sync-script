@@ -140,12 +140,12 @@ def save_this_hour_partial_spam_list():
     
     try:
     
-        base = datetime.today()
+        base = datetime.utcnow()
         hour = base.strftime('%Y%m%dT%H0000Z')
 
         #get the partial file
         diff = get_youmail_partial_list(hour)
-
+        
         #transform investigationReasons data
         for d in diff['phoneNumbers']:
             if d['investigationReasons']:
@@ -161,8 +161,14 @@ def save_this_hour_partial_spam_list():
         
         #calculate Operation field based on last full list (left join) 
         full = pd.read_csv("files/spam-number-file.csv")        
+
+        #Add or Update
         merge = df.merge(full.drop_duplicates(), on=['Number'], how='left', indicator=True)
         df['Operation'] = merge.apply((lambda row: 'A' if row['_merge'] == 'left_only' else 'M'), axis=1)
+        
+        #Delete or update
+        #merge = full.merge(df.drop_duplicates(), on=['Number'], how='left', indicator=True)
+        #df['Operation_D'] = merge.apply((lambda row: 'D' if row['_merge'] == 'left_only' else 'M'), axis=1)
         
         filename = CSV_FOLDER + "/" + YOUMAIL_PART_FILENAME + hour + ".csv"
 
@@ -242,4 +248,6 @@ def main(args):
 
 if __name__ == "__main__":
     #main(sys.argv[1:])
+    main('FULL')
     main('PARTIAL')
+    
