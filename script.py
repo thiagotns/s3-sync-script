@@ -117,20 +117,6 @@ def save_youmail_full():
         
     return
 
-
-#mock
-def partial_number_operation(number, spam_score, fraud_probability, TCPA_fraud_probability):
-    '''
-    with open(CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME, 'rt') as f:
-        reader = csv.reader(f, delimiter=',')
-        for row in reader:
-            if number == row[0]:
-                return 'M'
-    return 'A'
-    '''
-    return '-'
-
-
 #get partial spam list by now and save it to csv
 def save_this_hour_partial_spam_list():
     
