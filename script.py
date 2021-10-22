@@ -18,6 +18,7 @@ import requests
 import pandas as pd
 import csv
 from datetime import datetime
+import boto3
 
 # +
 URL_YOUMAIL_API_LIST = "https://dataapi.youmail.com/directory/spammers/v2/partial/since/"
@@ -27,6 +28,8 @@ URL_YOUMAIL_API_PARTIAL_HOUR = "https://dataapi.youmail.com/api/v3/spammerlist/p
 CSV_FOLDER = "files"
 YOUMAIL_FULL_FILENAME = "spam-number-file.csv"
 YOUMAIL_PART_FILENAME = "spam-number-file_"
+
+BUCKET_NAME = 'anne-youmail'
 
 
 # -
@@ -126,7 +129,7 @@ def partial_number_operation(number, spam_score, fraud_probability, TCPA_fraud_p
     return '-'
 
 
-#get the delta 
+#get partial spam list by now and save it to csv
 def save_this_hour_partial_spam_list():
     
     base = datetime.today()
@@ -160,4 +163,24 @@ def save_this_hour_partial_spam_list():
     return
 
 
-save_this_hour_partial_spam_list()
+#upload a file to s3
+def upload_file(file_name):
+
+    cfg = get_credentials()
+    
+    s3 = boto3.client('s3', aws_access_key_id = cfg['AWS_ACCESS_KEY'], aws_secret_access_key = cfg['AWS_SECRET_KEY'])
+
+    object_name = os.path.basename(file_name)
+    
+    try:
+    
+        s3.upload_file(file_name, BUCKET_NAME, object_name)
+        print("Upload Successful")
+        return True
+    
+    except Exception as e:
+        print(e)
+        return False
+
+
+upload_file('files/spam-number-file_20211021T210000Z.csv')
