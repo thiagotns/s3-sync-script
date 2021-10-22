@@ -138,35 +138,40 @@ def partial_number_operation(number, spam_score, fraud_probability, TCPA_fraud_p
 #get partial spam list by now and save it to csv
 def save_this_hour_partial_spam_list():
     
-    base = datetime.today()
-    hour = base.strftime('%Y%m%dT%H0000Z')
+    try:
+    
+        base = datetime.today()
+        hour = base.strftime('%Y%m%dT%H0000Z')
 
-    #get the partial file
-    diff = get_youmail_partial_list(hour)
+        #get the partial file
+        diff = get_youmail_partial_list(hour)
 
-    #transform investigationReasons data
-    for d in diff['phoneNumbers']:
-        if d['investigationReasons']:
-            for i in d['investigationReasons']:
-                d[i['name']] = i['certainty']
+        #transform investigationReasons data
+        for d in diff['phoneNumbers']:
+            if d['investigationReasons']:
+                for i in d['investigationReasons']:
+                    d[i['name']] = i['certainty']
+
+        #prepare dataframe
+        df = pd.DataFrame(diff['phoneNumbers'])
+        df.drop('investigationReasons', axis=1, inplace=True)
+        df.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
+
+        #calculate Operation field based on last full list
+        df['Operation'] = df.apply(lambda row: partial_number_operation(row['Number'], 
+                                                                        row['SpamScore'], 
+                                                                        row['FraudProbability'], 
+                                                                        row['TCPAFraudProbability']), axis=1)
+
+        filename = CSV_FOLDER + "/" + YOUMAIL_PART_FILENAME + hour + ".csv"
+
+        df.to_csv(filename, index=False)
     
-    #prepare dataframe
-    df = pd.DataFrame(diff['phoneNumbers'])
-    df.drop('investigationReasons', axis=1, inplace=True)
-    df.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
+        return filename
     
-    #calculate Operation field based on last full list
-    df['Operation'] = df.apply(lambda row: partial_number_operation(row['Number'], 
-                                                                    row['SpamScore'], 
-                                                                    row['FraudProbability'], 
-                                                                    row['TCPAFraudProbability']), axis=1)
-    
-    #spam-number-file_yyyymmddhh:mm:ss
-    time_file = base.strftime('%Y%m%d%H:00:00')
-    
-    df.to_csv(CSV_FOLDER + "/" + YOUMAIL_PART_FILENAME + hour + ".csv", index=False)
-    
-    return
+    except Exception as e:
+        print(e)
+        raise SystemExit(e)
 
 
 #upload a file to s3
@@ -199,13 +204,20 @@ def sync_full():
     except Exception as e:
         print(e)
         return False
+
+
+def sync_partial():
+    try:
+        
+        partial_csv = save_this_hour_partial_spam_list()
+        
+        return upload_file(partial_csv)
     
+    except Exception as e:
+        print(e)
+        raise SystemExit(e)
 
 
-sync_full()
-
-
-# +
 def main(args):
     
     if len(args) == 0:
@@ -219,13 +231,14 @@ def main(args):
     if 'FULL' in args and 'PARTIAL' in args:
         print("Use only one option FULL or PARTIAL")
         return
-
     
     if 'FULL' in args:
         sync_full()
-    
-    
-main(['FULL'])    
-# -
+        
+    if 'PARTIAL' in args:
+        sync_partial()
 
-print('FULL' in ['FULL'])
+
+if __name__ == "__main__":
+    #main(sys.argv[1:])
+    main('PARTIAL')
