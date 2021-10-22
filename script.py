@@ -44,14 +44,19 @@ def get_youmail_api_headers():
 def get_youmail_partial_list(datetime):
     
     try:
+        logging.info(f"[PARTIAL] Downloading partial file (hourly change) from YOUMAIL api: datetime: {datetime}")
+
         headers = get_youmail_api_headers()
         response = requests.get(URL_YOUMAIL_API_PARTIAL_HOUR + datetime, headers=headers)
-    
+        result =  response.json()
+
+        logging.info(f"[PARTIAL] Download Finished: totalPhoneNumbersCount = {result['totalPhoneNumbersCount']}")
+
+        return result
+
     except requests.exceptions.RequestException as e:
         logging.exception(e)
         raise SystemExit(e)
-        
-    return response.json()
 
 #hourly = get_youmail_partial_list("20211020T160000Z")
 
@@ -165,6 +170,8 @@ def save_this_hour_partial_spam_list():
 
         df.to_csv(filename, index=False)
     
+        logging.info(f"[PARTIAL] File \"{filename}\" saved to local filesystem")
+
         return filename
     
     except Exception as e:
@@ -173,9 +180,9 @@ def save_this_hour_partial_spam_list():
 
 
 #upload a file to s3
-def upload_file(file_name):
+def upload_file(file_name, sync_tipe = ""):
 
-    logging.info(f"Uploading file \"{file_name}\" to S3")
+    logging.info(f"[{sync_tipe}] Uploading file \"{file_name}\" to S3")
 
     cfg = get_credentials()
     
@@ -186,7 +193,7 @@ def upload_file(file_name):
     try:
     
         s3.upload_file(file_name, BUCKET_NAME, object_name)
-        logging.info(f"Upload Successful (S3): bucket=\"{BUCKET_NAME}\" object_name=\"{file_name}\"")
+        logging.info(f"[{sync_tipe}] Upload Successful (S3): bucket=\"{BUCKET_NAME}\" object_name=\"{file_name}\"")
         return True
     
     except Exception as e:
@@ -197,13 +204,13 @@ def upload_file(file_name):
 def sync_full():
     try:
 
-        logging.info("Full Sync starting...")
+        logging.info("[FULL] Full Sync starting...")
 
         full_csv = save_youmail_full()
         
-        result =  upload_file(full_csv)
+        result =  upload_file(full_csv, 'FULL')
 
-        logging.info("Full Sync Finished")
+        logging.info("[FULL] Full Sync Finished")
 
         return result
     
@@ -215,10 +222,16 @@ def sync_full():
 def sync_partial():
     try:
         
+        logging.info("[PARTIAL] Hourly Changes Sync starting...")
+
         partial_csv = save_this_hour_partial_spam_list()
         
-        return upload_file(partial_csv)
+        result = upload_file(partial_csv, 'PARTIAL')
+
+        logging.info("[PARTIAL] Hourly Changes Sync finished")
     
+        return result
+
     except Exception as e:
         logging.exception(e)
         raise SystemExit(e)
@@ -251,7 +264,7 @@ if __name__ == "__main__":
     logging.info("------------------    Script Start    ------------------")
     
     #main(sys.argv[1:])
-    main('FULL')
-    #main('PARTIAL')
+    #main('FULL')
+    main('PARTIAL')
     
     logging.info("------------------    Script End      ------------------")
