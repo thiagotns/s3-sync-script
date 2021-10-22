@@ -30,7 +30,7 @@ CSV_FOLDER = "files"
 YOUMAIL_FULL_FILENAME = "spam-number-file.csv"
 YOUMAIL_PART_FILENAME = "spam-number-file_"
 
-BUCKET_NAME = 'anne-youmail'
+BUCKET_NAME = 'youmail'
 
 
 # -
@@ -156,13 +156,14 @@ def save_this_hour_partial_spam_list():
         df = pd.DataFrame(diff['phoneNumbers'])
         df.drop('investigationReasons', axis=1, inplace=True)
         df.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
-
-        #calculate Operation field based on last full list
-        df['Operation'] = df.apply(lambda row: partial_number_operation(row['Number'], 
-                                                                        row['SpamScore'], 
-                                                                        row['FraudProbability'], 
-                                                                        row['TCPAFraudProbability']), axis=1)
-
+        
+        df["Number"] = pd.to_numeric(df["Number"])
+        
+        #calculate Operation field based on last full list (left join) 
+        full = pd.read_csv("files/spam-number-file.csv")        
+        merge = df.merge(full.drop_duplicates(), on=['Number'], how='left', indicator=True)
+        df['Operation'] = merge.apply((lambda row: 'A' if row['_merge'] == 'left_only' else 'M'), axis=1)
+        
         filename = CSV_FOLDER + "/" + YOUMAIL_PART_FILENAME + hour + ".csv"
 
         df.to_csv(filename, index=False)
