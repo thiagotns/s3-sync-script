@@ -12,8 +12,8 @@ URL_YOUMAIL_API_LIST = "https://dataapi.youmail.com/directory/spammers/v2/partia
 URL_YOUMAIL_API_FULL = "https://dataapi.youmail.com/api/v3/spammerlist/full"
 URL_YOUMAIL_API_PARTIAL_HOUR = "https://dataapi.youmail.com/api/v3/spammerlist/partial/"
 CSV_FOLDER = "files"
-YOUMAIL_FULL_FILENAME = "spam-number-file.csv"
-YOUMAIL_PART_FILENAME = "spam-number-file_"
+YOUMAIL_FULL_FILENAME = "FULL_spam-number-file_"
+YOUMAIL_PART_FILENAME = "NETCHANGE_spam-number-file_"
 BUCKET_NAME = 'youmail'
 
 #get credentials from credentials.json
@@ -44,13 +44,13 @@ def get_youmail_api_headers():
 def get_youmail_partial_list(datetime):
     
     try:
-        logging.info(f"[PARTIAL] Downloading partial file (hourly change) from YOUMAIL api: datetime: {datetime}")
+        logging.info(f"[NETCHANGE] Downloading partial file (hourly change) from YOUMAIL api: datetime: {datetime}")
 
         headers = get_youmail_api_headers()
         response = requests.get(URL_YOUMAIL_API_PARTIAL_HOUR + datetime, headers=headers)
         result =  response.json()
 
-        logging.info(f"[PARTIAL] Download Finished: totalPhoneNumbersCount = {result['totalPhoneNumbersCount']}")
+        logging.info(f"[NETCHANGE] Download Finished: totalPhoneNumbersCount = {result['totalPhoneNumbersCount']}")
 
         return result
 
@@ -103,7 +103,10 @@ def save_youmail_full():
         df.drop('investigationReasons', axis=1, inplace=True)
         df.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
         
-        filename = CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME
+        base = datetime.utcnow()
+        today = base.strftime('%Y%m%d')
+
+        filename = CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME + today + ".csv"
         
         df.to_csv(filename, index=False)
 
@@ -156,7 +159,7 @@ def save_this_hour_partial_spam_list():
 
         df.to_csv(filename, index=False)
     
-        logging.info(f"[PARTIAL] File \"{filename}\" saved to local filesystem")
+        logging.info(f"[NETCHANGE] File \"{filename}\" saved to local filesystem")
 
         return filename
     
@@ -179,7 +182,7 @@ def upload_file(file_name, sync_tipe = ""):
     try:
     
         s3.upload_file(file_name, BUCKET_NAME, object_name)
-        logging.info(f"[{sync_tipe}] Upload Successful (S3): bucket=\"{BUCKET_NAME}\" object_name=\"{file_name}\"")
+        logging.info(f"[{sync_tipe}] Upload Successful (S3): bucket=\"{BUCKET_NAME}\" object_name=\"{object_name}\"")
         return True
     
     except Exception as e:
@@ -208,13 +211,13 @@ def sync_full():
 def sync_partial():
     try:
         
-        logging.info("[PARTIAL] Hourly Changes Sync starting...")
+        logging.info("[NETCHANGE] Hourly Changes Sync starting...")
 
         partial_csv = save_this_hour_partial_spam_list()
         
-        result = upload_file(partial_csv, 'PARTIAL')
+        result = upload_file(partial_csv, 'NETCHANGE')
 
-        logging.info("[PARTIAL] Hourly Changes Sync finished")
+        logging.info("[NETCHANGE] Hourly Changes Sync finished")
     
         return result
 
@@ -250,7 +253,7 @@ if __name__ == "__main__":
     logging.info("------------------    Script Start    ------------------")
     
     #main(sys.argv[1:])
-    main('FULL')
+    #main('FULL')
     main('PARTIAL')
     
     logging.info("------------------    Script End      ------------------")
