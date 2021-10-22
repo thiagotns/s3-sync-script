@@ -67,14 +67,14 @@ def get_youmail_partial_list(datetime):
 def get_youmail_full_list():
     
     try:
-        logging.info("Downloading full file list from YOUMAIL api")
+        logging.info("[FULL] Downloading full file list from YOUMAIL api")
 
         headers = get_youmail_api_headers()
         response = requests.get(URL_YOUMAIL_API_FULL, headers=headers)
     
         result = response.json()
 
-        logging.info(f"Download Finished: totalPhoneNumbersCount = {result['totalPhoneNumbersCount']}")
+        logging.info(f"[FULL] Download Finished: totalPhoneNumbersCount = {result['totalPhoneNumbersCount']}")
 
         return result
     except requests.exceptions.RequestException as e:
@@ -107,7 +107,7 @@ def save_youmail_full():
         
         df.to_csv(filename, index=False)
 
-        logging.info(f"File \"{filename}\" saved to local filesystem")
+        logging.info(f"[FULL] File \"{filename}\" saved to local filesystem")
 
         return filename
     
@@ -264,7 +264,7 @@ if __name__ == "__main__":
     logging.info("------------------    Script Start    ------------------")
     
     #main(sys.argv[1:])
-    #main('FULL')
+    main('FULL')
     main('PARTIAL')
     
     logging.info("------------------    Script End      ------------------")
