@@ -13,6 +13,7 @@
 # ---
 
 import os
+import sys
 import json
 import requests
 import pandas as pd
@@ -107,7 +108,12 @@ def save_youmail_full():
         df = pd.DataFrame(data['phoneNumbers'])
         df.drop('investigationReasons', axis=1, inplace=True)
         df.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
-        df.to_csv(CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME, index=False)
+        
+        filename = CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME
+        
+        df.to_csv(filename, index=False)
+    
+        return filename
     
     except Exception as e:
         print(e)
@@ -183,4 +189,43 @@ def upload_file(file_name):
         return False
 
 
-upload_file('files/spam-number-file_20211021T210000Z.csv')
+def sync_full():
+    try:
+        
+        full_csv = save_youmail_full()
+        
+        return upload_file(full_csv)
+    
+    except Exception as e:
+        print(e)
+        return False
+    
+
+
+sync_full()
+
+
+# +
+def main(args):
+    
+    if len(args) == 0:
+        print("Please use FULL or PARTIAL parameter")
+        return
+    
+    if 'FULL' not in args and 'PARTIAL' not in args:
+        print("Please use FULL or PARTIAL parameter")
+        return
+
+    if 'FULL' in args and 'PARTIAL' in args:
+        print("Use only one option FULL or PARTIAL")
+        return
+
+    
+    if 'FULL' in args:
+        sync_full()
+    
+    
+main(['FULL'])    
+# -
+
+print('FULL' in ['FULL'])
