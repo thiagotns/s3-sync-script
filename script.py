@@ -176,8 +176,6 @@ def save_this_hour_partial_spam_list():
             merge = df.merge(df_prev.drop_duplicates(), on=['Number'], how='left', indicator=True)
             df['Operation'] = merge.apply((lambda row: 'A' if row['_merge'] == 'left_only' else 'M'), axis=1)
 
-            merge.to_csv("files/merge.csv")
-
             #Delete
             logging.info(f"[NETCHANGE] Getting deleted number")
             merge = df_prev.drop_duplicates().merge(df.drop_duplicates(), on=['Number'], how='left', indicator=True)
