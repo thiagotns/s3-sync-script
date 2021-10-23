@@ -1,5 +1,7 @@
 config-ignore/
 docs/
+.vscode/
+log/
 credentials.json
 
 .ipynb_checkpoints/

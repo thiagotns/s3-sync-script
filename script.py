@@ -281,7 +281,16 @@ def main(args):
 
 if __name__ == "__main__":
     
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    hour_to_filename = datetime.now().strftime('%Y%m%d%H%M%S')
+
+    logging.basicConfig(level=logging.INFO, 
+                        format='%(asctime)s - %(levelname)s - %(message)s',
+                        handlers=[
+                            logging.FileHandler(f"log/s3-sync-youmail_{hour_to_filename}.log"),
+                            logging.StreamHandler()
+                        ])
+
+
     logging.info("------------------    Script Start    ------------------")
     
     main(sys.argv[1:])
