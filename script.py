@@ -7,6 +7,7 @@ import csv
 from datetime import datetime
 import boto3
 import logging
+import glob
 
 URL_YOUMAIL_API_LIST = "https://dataapi.youmail.com/directory/spammers/v2/partial/since/"
 URL_YOUMAIL_API_FULL = "https://dataapi.youmail.com/api/v3/spammerlist/full"
@@ -127,6 +128,14 @@ def save_this_hour_partial_spam_list():
     
         base = datetime.utcnow()
         hour = base.strftime('%Y%m%dT%H0000Z')
+        today = datetime.utcnow().strftime('%Y%m%d')
+        hour_to_filename = datetime.utcnow().strftime('%Y%m%d%H00')
+
+        #hora = '04'
+
+        #hour = f'20211023T{hora}0000Z'
+        #today = f'20211023'
+        #hour_to_filename = f'20211023{hora}00'
 
         #get the partial file
         diff = get_youmail_partial_list(hour)
@@ -144,21 +153,44 @@ def save_this_hour_partial_spam_list():
         
         df["Number"] = pd.to_numeric(df["Number"])
         
-        #calculate Operation field based on last full list (left join) 
-        full = pd.read_csv("files/spam-number-file.csv")        
+        filename = CSV_FOLDER + "/" + YOUMAIL_PART_FILENAME + hour_to_filename + ".csv"
 
-        #Add or Update
-        merge = df.merge(full.drop_duplicates(), on=['Number'], how='left', indicator=True)
-        df['Operation'] = merge.apply((lambda row: 'A' if row['_merge'] == 'left_only' else 'M'), axis=1)
-        
-        #Delete or update
-        #merge = full.merge(df.drop_duplicates(), on=['Number'], how='left', indicator=True)
-        #df['Operation_D'] = merge.apply((lambda row: 'D' if row['_merge'] == 'left_only' else 'M'), axis=1)
-        
-        filename = CSV_FOLDER + "/" + YOUMAIL_PART_FILENAME + hour + ".csv"
+        l_prev = glob.glob(f"{CSV_FOLDER}/NETCHANGE_*{today}*.csv")
+
+        l_tmp = []
+
+        for l in l_prev:
+            if l == filename:
+                continue
+
+            tmp = pd.read_csv(l)
+            l_tmp.append(tmp)
+
+        if len(l_tmp) > 0:
+            df_prev = pd.concat(l_tmp, axis=0, ignore_index=True)
+
+            #calculate Operation field based on last full list (left join) 
+
+            #Add or Update
+            logging.info(f"[NETCHANGE] Getting added and modified numbers")
+            merge = df.merge(df_prev.drop_duplicates(), on=['Number'], how='left', indicator=True)
+            df['Operation'] = merge.apply((lambda row: 'A' if row['_merge'] == 'left_only' else 'M'), axis=1)
+
+            merge.to_csv("files/merge.csv")
+
+            #Delete
+            logging.info(f"[NETCHANGE] Getting deleted number")
+            merge = df_prev.drop_duplicates().merge(df.drop_duplicates(), on=['Number'], how='left', indicator=True)
+            merge = merge.query('_merge == \'left_only\'')[['Number', 'SpamScore_x', 'FraudProbability_x', 'TCPAFraudProbability_x']]
+            merge.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
+            merge['Operation'] = 'D'
+            df = df.append(merge)
+        else:
+            df['Operation'] = 'A' #first hour
+
+        df.drop_duplicates(inplace=True)
 
         df.to_csv(filename, index=False)
-    
         logging.info(f"[NETCHANGE] File \"{filename}\" saved to local filesystem")
 
         return filename
