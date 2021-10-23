@@ -261,21 +261,21 @@ def sync_partial():
 def main(args):
     
     if len(args) == 0:
-        logging.error("Please use FULL or PARTIAL parameter")
+        logging.error("Please use FULL or NETCHANGE parameter")
         return
     
-    if 'FULL' not in args and 'PARTIAL' not in args:
-        logging.errorint("Please use FULL or PARTIAL parameter")
+    if 'FULL' not in args and 'NETCHANGE' not in args:
+        logging.error("Please use FULL or NETCHANGE parameter")
         return
 
-    if 'FULL' in args and 'PARTIAL' in args:
-        logging.error("Use only one option FULL or PARTIAL")
+    if 'FULL' in args and 'NETCHANGE' in args:
+        logging.error("Use only one option FULL or NETCHANGE")
         return
     
     if 'FULL' in args:
         sync_full()
         
-    if 'PARTIAL' in args:
+    if 'NETCHANGE' in args:
         sync_partial()
 
 
