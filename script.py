@@ -284,8 +284,8 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info("------------------    Script Start    ------------------")
     
-    #main(sys.argv[1:])
+    main(sys.argv[1:])
     #main('FULL')
-    main('PARTIAL')
+    #main('PARTIAL')
     
     logging.info("------------------    Script End      ------------------")
