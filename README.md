@@ -34,3 +34,13 @@ python3 script.py NETCHANGE
 ```
 s3-sync-script/log
 ```
+
+##Cron 
+Run FULL sync daylly
+```
+0 0 * * * python3 /home/thiago/s3-sync-script/script.py FULL
+```
+Run NETCHANGE sync daylly
+```
+0 * * * * python3 /home/thiago/s3-sync-script/script.py NETCHANGE
+```
