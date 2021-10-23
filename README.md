@@ -19,6 +19,18 @@ vim credentials.json
 ```
 
 ## How to run
+
+Sync FULL
 ```
-python3 script.py
+python3 script.py FULL
+```
+
+Sync NETCHANGE
+```
+python3 script.py NETCHANGE
+```
+
+## Log Folder
+```
+s3-sync-script/log
 ```
