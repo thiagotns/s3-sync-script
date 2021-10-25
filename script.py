@@ -281,10 +281,12 @@ if __name__ == "__main__":
     
     hour_to_filename = datetime.now().strftime('%Y%m%d%H%M%S')
 
+    prefix = sys.argv[1:][0] if 'FULL' in sys.argv[1:] or 'NETCHANGE' in sys.argv[1:]  else 'INVALID_PARAMETER'
+
     logging.basicConfig(level=logging.INFO, 
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         handlers=[
-                            logging.FileHandler(f"/home/thiago/s3-sync-script/log/s3-sync-youmail_{hour_to_filename}.log"),
+                            logging.FileHandler(f"/home/thiago/s3-sync-script/log/s3-sync-youmail_{hour_to_filename}_{prefix}.log"),
                             logging.StreamHandler()
                         ])
 
