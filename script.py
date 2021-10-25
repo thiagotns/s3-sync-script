@@ -9,10 +9,11 @@ import boto3
 import logging
 import glob
 
+os.chdir("/home/thiago/s3-sync-script/")
 URL_YOUMAIL_API_LIST = "https://dataapi.youmail.com/directory/spammers/v2/partial/since/"
 URL_YOUMAIL_API_FULL = "https://dataapi.youmail.com/api/v3/spammerlist/full"
 URL_YOUMAIL_API_PARTIAL_HOUR = "https://dataapi.youmail.com/api/v3/spammerlist/partial/"
-CSV_FOLDER = "files"
+CSV_FOLDER = "/home/thiago/s3-sync-script/files"
 YOUMAIL_FULL_FILENAME = "FULL_spam-number-file_"
 YOUMAIL_PART_FILENAME = "NETCHANGE_spam-number-file_"
 BUCKET_NAME = 'youmail'
@@ -156,7 +157,6 @@ def save_this_hour_partial_spam_list():
         filename = CSV_FOLDER + "/" + YOUMAIL_PART_FILENAME + hour_to_filename + ".csv"
 
         l_prev = glob.glob(f"{CSV_FOLDER}/NETCHANGE_*{today}*.csv")
-
         l_tmp = []
 
         for l in l_prev:
@@ -284,7 +284,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, 
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         handlers=[
-                            logging.FileHandler(f"log/s3-sync-youmail_{hour_to_filename}.log"),
+                            logging.FileHandler(f"/home/thiago/s3-sync-script/log/s3-sync-youmail_{hour_to_filename}.log"),
                             logging.StreamHandler()
                         ])
 
