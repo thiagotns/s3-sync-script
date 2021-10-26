@@ -35,12 +35,12 @@ python3 script.py NETCHANGE
 s3-sync-script/log
 ```
 
-##Cron 
-Run FULL sync daylly
+## Cron 
+Run FULL sync daylly (cat /etc/cron.d/full-youmail)
 ```
-0 0 * * * python3 /home/thiago/s3-sync-script/script.py FULL
+0 0 * * * root python3 /home/thiago/s3-sync-script/script.py FULL
 ```
-Run NETCHANGE sync daylly
+Run NETCHANGE sync hourly (/etc/cron.d/changelog-youmail)
 ```
-0 * * * * python3 /home/thiago/s3-sync-script/script.py NETCHANGE
+0 * * * * root python3 /home/thiago/s3-sync-script/script.py NETCHANGE
 ```
