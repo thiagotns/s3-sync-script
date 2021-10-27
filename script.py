@@ -164,6 +164,7 @@ def save_this_hour_partial_spam_list():
                 continue
 
             tmp = pd.read_csv(l)
+            tmp['ref'] = l
             l_tmp.append(tmp)
 
         if len(l_tmp) > 0:
@@ -174,7 +175,19 @@ def save_this_hour_partial_spam_list():
             #Add or Update
             logging.info(f"[NETCHANGE] Getting added and modified numbers")
             merge = df.merge(df_prev.drop_duplicates(), on=['Number'], how='left', indicator=True)
-            df['Operation'] = merge.apply((lambda row: 'A' if row['_merge'] == 'left_only' else 'M'), axis=1)
+            #df['Operation'] = merge.apply((lambda row: 'A' if row['_merge'] == 'left_only' else 'M'), axis=1)
+            merge = merge.query('_merge == \'left_only\'')[['Number', 'SpamScore_x', 'FraudProbability_x', 'TCPAFraudProbability_x']]
+            merge.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
+            merge['Operation'] = 'A'
+            base = merge
+
+            merge = df.merge(df_prev.drop_duplicates(), on=['Number'], how='left', indicator=True)
+            merge = merge.query('_merge != \'left_only\'')[['Number', 'SpamScore_x', 'FraudProbability_x', 'TCPAFraudProbability_x']]
+            merge.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
+            merge['Operation'] = 'M'
+            base = base.append(merge)
+
+            #merge.to_csv('files/merged.csv')
 
             #Delete
             logging.info(f"[NETCHANGE] Getting deleted number")
@@ -182,16 +195,28 @@ def save_this_hour_partial_spam_list():
             merge = merge.query('_merge == \'left_only\'')[['Number', 'SpamScore_x', 'FraudProbability_x', 'TCPAFraudProbability_x']]
             merge.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
             merge['Operation'] = 'D'
-            df = df.append(merge)
+            base = base.append(merge)
+
+            df = base
+
+            df_full = df_prev.append(df)
+
         else:
             df['Operation'] = 'A' #first hour
+            df_full = df
+            df_full['ref'] = filename
 
         df.drop_duplicates(inplace=True)
+        df_full.drop_duplicates(inplace=True)
 
         df.to_csv(filename, index=False)
         logging.info(f"[NETCHANGE] File \"{filename}\" saved to local filesystem")
 
-        return filename
+        filename_full_netchange = CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME + hour_to_filename + ".csv"
+        df_full.to_csv(filename_full_netchange)
+        logging.info(f"[NETCHANGE] FULL File \"{filename_full_netchange}\" saved to local filesystem")
+
+        return filename, filename_full_netchange
     
     except Exception as e:
         logging.exception(e)
@@ -243,9 +268,10 @@ def sync_partial():
         
         logging.info("[NETCHANGE] Hourly Changes Sync starting...")
 
-        partial_csv = save_this_hour_partial_spam_list()
+        partial_csv, full = save_this_hour_partial_spam_list()
         
         result = upload_file(partial_csv, 'NETCHANGE')
+        result = upload_file(full, 'NETCHANGE_FULL')
 
         logging.info("[NETCHANGE] Hourly Changes Sync finished")
     
