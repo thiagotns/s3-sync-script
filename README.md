@@ -44,3 +44,7 @@ Run NETCHANGE sync hourly (/etc/cron.d/changelog-youmail)
 ```
 0 * * * * root python3 /home/thiago/s3-sync-script/script.py NETCHANGE
 ```
+Run CLEAN UP obsolete files (/etc/cron.d/clean-files-youmail)
+```
+30 0 * * * root python3 /home/thiago/s3-sync-script/script.py CLEAN
+```
