@@ -13,7 +13,7 @@ os.chdir("/home/thiago/s3-sync-script/")
 URL_YOUMAIL_API_LIST = "https://dataapi.youmail.com/directory/spammers/v2/partial/since/"
 URL_YOUMAIL_API_FULL = "https://dataapi.youmail.com/api/v3/spammerlist/full"
 URL_YOUMAIL_API_PARTIAL_HOUR = "https://dataapi.youmail.com/api/v3/spammerlist/partial/"
-CSV_FOLDER = "files"
+CSV_FOLDER = "/home/thiago/s3-sync-script/files"
 YOUMAIL_FULL_FILENAME = "FULL_spam-number-file_"
 YOUMAIL_PART_FILENAME = "NETCHANGE_spam-number-file_"
 BUCKET_NAME = 'youmail'
@@ -329,12 +329,12 @@ def main(args):
         logging.error("Please use FULL or NETCHANGE or CLEAN parameter")
         return
     
-    if 'FULL' not in args and 'NETCHANGE' not in args and 'CLEAN' in args:
-        logging.error("Please use FULL or NETCHANGE parameter")
+    if 'FULL' not in args and 'NETCHANGE' not in args and 'CLEAN' not in args:
+        logging.error("Please use FULL or NETCHANGE parameter or CLEAN parameter")
         return
 
     if 'FULL' in args and 'NETCHANGE' in args and 'CLEAN' in args:
-        logging.error("Use only one option FULL or NETCHANGE")
+        logging.error("Use only one option FULL, NETCHANGE or CLEAN")
         return
     
     if 'FULL' in args:
