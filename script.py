@@ -4,7 +4,7 @@ import json
 import requests
 import pandas as pd
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 import boto3
 import logging
 import glob
@@ -13,7 +13,7 @@ os.chdir("/home/thiago/s3-sync-script/")
 URL_YOUMAIL_API_LIST = "https://dataapi.youmail.com/directory/spammers/v2/partial/since/"
 URL_YOUMAIL_API_FULL = "https://dataapi.youmail.com/api/v3/spammerlist/full"
 URL_YOUMAIL_API_PARTIAL_HOUR = "https://dataapi.youmail.com/api/v3/spammerlist/partial/"
-CSV_FOLDER = "/home/thiago/s3-sync-script/files"
+CSV_FOLDER = "files"
 YOUMAIL_FULL_FILENAME = "FULL_spam-number-file_"
 YOUMAIL_PART_FILENAME = "NETCHANGE_spam-number-file_"
 BUCKET_NAME = 'youmail'
@@ -281,18 +281,59 @@ def sync_partial():
         logging.exception(e)
         raise SystemExit(e)
 
+def delete_obsolete_files():
+    
+    logging.info("[CLEAN] Cleaning up the obsolete files...")
+
+    base = datetime.utcnow()
+    today = datetime.utcnow().strftime('%Y%m%d')
+    yesterday = (datetime.utcnow() - timedelta(1)).strftime('%Y%m%d')
+    hour_to_filename = datetime.utcnow().strftime('%Y%m%d%H00')
+
+    logging.info(f"[CLEAN] Today: {today}")
+    logging.info(f"[CLEAN] Yesterday: {yesterday}")
+
+
+    #backups (always keep the files another day)
+    files = glob.glob(f"{CSV_FOLDER}/*.csv.backup")
+    if not files:
+        logging.info("[CLEAN] There is no backup files to delete")
+    for f in files:
+        logging.info("[CLEAN] Removing " + f)
+        os.remove(f)
+
+    #netchange - rename to be deleted tomorrow
+    files = glob.glob(f"{CSV_FOLDER}/NETCHANGE_*{yesterday}*.csv")
+    if not files:
+        logging.info("[CLEAN] There is no netchange files to delete")
+    for f in files:
+        os.rename(f,  f + ".backup")
+        logging.info("[CLEAN] Renaming " + f + ".backup")
+
+    #full - rename to be deleted tomorrow
+    files = glob.glob(f"{CSV_FOLDER}/FULL_*{yesterday}*.csv")
+    if not files:
+        logging.info("[CLEAN] There is no full files to delete")
+    for f in files:
+        os.rename(f,  f + ".backup")
+        logging.info("[CLEAN] Renaming " + f + ".backup")
+
+    logging.info("[CLEAN] Clean up finished.")
+    
+    return
+
 
 def main(args):
     
     if len(args) == 0:
-        logging.error("Please use FULL or NETCHANGE parameter")
+        logging.error("Please use FULL or NETCHANGE or CLEAN parameter")
         return
     
-    if 'FULL' not in args and 'NETCHANGE' not in args:
+    if 'FULL' not in args and 'NETCHANGE' not in args and 'CLEAN' in args:
         logging.error("Please use FULL or NETCHANGE parameter")
         return
 
-    if 'FULL' in args and 'NETCHANGE' in args:
+    if 'FULL' in args and 'NETCHANGE' in args and 'CLEAN' in args:
         logging.error("Use only one option FULL or NETCHANGE")
         return
     
@@ -302,6 +343,8 @@ def main(args):
     if 'NETCHANGE' in args:
         sync_partial()
 
+    if 'CLEAN' in args:
+        delete_obsolete_files()
 
 if __name__ == "__main__":
     
