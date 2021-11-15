@@ -90,9 +90,16 @@ def get_youmail_full_list():
 def save_youmail_full():
 
     try:
+
+        base = datetime.utcnow()
+        today = base.strftime('%Y%m%d')
     
         #get full spam list from youlist API
         data = get_youmail_full_list()
+
+        #debug
+        with open(f"{CSV_FOLDER}/YOUMAIL_FULL_{today}.txt", 'w') as f:
+            json.dump(data, f)
 
         #transform investigationReasons data
         for d in data['phoneNumbers']:
@@ -104,9 +111,6 @@ def save_youmail_full():
         df = pd.DataFrame(data['phoneNumbers'])
         df.drop('investigationReasons', axis=1, inplace=True)
         df.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
-        
-        base = datetime.utcnow()
-        today = base.strftime('%Y%m%d')
 
         filename = CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME + today + ".csv"
         
@@ -132,14 +136,19 @@ def save_this_hour_partial_spam_list():
         today = datetime.utcnow().strftime('%Y%m%d')
         hour_to_filename = datetime.utcnow().strftime('%Y%m%d%H00')
 
-        #hora = '04'
+        #hora = '12'
+        #dia = '20211113'
 
-        #hour = f'20211023T{hora}0000Z'
-        #today = f'20211023'
-        #hour_to_filename = f'20211023{hora}00'
+        #hour = f'{dia}T{hora}0000Z'
+        #today = f'{dia}'
+        #hour_to_filename = f'{dia}{hora}00'
 
         #get the partial file
         diff = get_youmail_partial_list(hour)
+
+        #debug
+        with open(f"{CSV_FOLDER}/YOUMAIL_NETCHANGE_{hour_to_filename}.txt", 'w') as f:
+            json.dump(diff, f)
         
         #transform investigationReasons data
         for d in diff['phoneNumbers']:
@@ -164,7 +173,7 @@ def save_this_hour_partial_spam_list():
                 continue
 
             tmp = pd.read_csv(l)
-            tmp['ref'] = l
+            #tmp['ref'] = l
             l_tmp.append(tmp)
 
         if len(l_tmp) > 0:
@@ -204,7 +213,7 @@ def save_this_hour_partial_spam_list():
         else:
             df['Operation'] = 'A' #first hour
             df_full = df
-            df_full['ref'] = filename
+            #df_full['ref'] = filename
 
         df.drop_duplicates(inplace=True)
         df_full.drop_duplicates(inplace=True)
@@ -213,7 +222,7 @@ def save_this_hour_partial_spam_list():
         logging.info(f"[NETCHANGE] File \"{filename}\" saved to local filesystem")
 
         filename_full_netchange = CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME + hour_to_filename + ".csv"
-        df_full.to_csv(filename_full_netchange)
+        df_full.to_csv(filename_full_netchange, index=False)
         logging.info(f"[NETCHANGE] FULL File \"{filename_full_netchange}\" saved to local filesystem")
 
         return filename, filename_full_netchange
@@ -364,6 +373,6 @@ if __name__ == "__main__":
     
     main(sys.argv[1:])
     #main('FULL')
-    #main('PARTIAL')
+    #main('NETCHANGE')
     
     logging.info("------------------    Script End      ------------------")
