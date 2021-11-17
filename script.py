@@ -304,7 +304,7 @@ def delete_obsolete_files():
 
 
     #backups (always keep the files another day)
-    files = glob.glob(f"{CSV_FOLDER}/*.csv.backup")
+    files = glob.glob(f"{CSV_FOLDER}/*.backup")
     if not files:
         logging.info("[CLEAN] There is no backup files to delete")
     for f in files:
@@ -323,6 +323,14 @@ def delete_obsolete_files():
     files = glob.glob(f"{CSV_FOLDER}/FULL_*{yesterday}*.csv")
     if not files:
         logging.info("[CLEAN] There is no full files to delete")
+    for f in files:
+        os.rename(f,  f + ".backup")
+        logging.info("[CLEAN] Renaming " + f + ".backup")
+
+    #youmail - rename to be deleted tomorrow
+    files = glob.glob(f"{CSV_FOLDER}/YOUMAIL_*{yesterday}*")
+    if not files:
+        logging.info("[CLEAN] There is no youmail files to delete")
     for f in files:
         os.rename(f,  f + ".backup")
         logging.info("[CLEAN] Renaming " + f + ".backup")
