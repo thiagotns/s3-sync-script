@@ -16,6 +16,7 @@ URL_YOUMAIL_API_PARTIAL_HOUR = "https://dataapi.youmail.com/api/v3/spammerlist/p
 CSV_FOLDER = "/home/thiago/s3-sync-script/files"
 YOUMAIL_FULL_FILENAME = "FULL_spam-number-file_"
 YOUMAIL_PART_FILENAME = "NETCHANGE_spam-number-file_"
+YOUMAIL_FULL_NETCHANGE_PART_FILENAME = "FULL_NETCHANGE_spam-number-file_"
 BUCKET_NAME = 'youmail'
 
 #get credentials from credentials.json
@@ -136,8 +137,8 @@ def save_this_hour_partial_spam_list():
         today = datetime.utcnow().strftime('%Y%m%d')
         hour_to_filename = datetime.utcnow().strftime('%Y%m%d%H00')
 
-        #hora = '12'
-        #dia = '20211113'
+        #hora = '03'
+        #dia = '20211123'
 
         #hour = f'{dia}T{hora}0000Z'
         #today = f'{dia}'
@@ -221,15 +222,48 @@ def save_this_hour_partial_spam_list():
         df.to_csv(filename, index=False)
         logging.info(f"[NETCHANGE] File \"{filename}\" saved to local filesystem")
 
-        filename_full_netchange = CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME + hour_to_filename + ".csv"
-        df_full.to_csv(filename_full_netchange, index=False)
-        logging.info(f"[NETCHANGE] FULL File \"{filename_full_netchange}\" saved to local filesystem")
+        filename_full_netchange = save_full_netchange(hour_to_filename)
 
         return filename, filename_full_netchange
     
     except Exception as e:
         logging.exception(e)
         raise SystemExit(e)
+
+
+def save_full_netchange(hour_to_filename):
+    today = hour_to_filename[0:-4]
+
+    filename_full_netchange = CSV_FOLDER + "/" + YOUMAIL_FULL_NETCHANGE_PART_FILENAME + hour_to_filename + ".csv"
+
+    logging.info(f"[NETCHANGE] Genarating full netchange to {hour_to_filename}")
+
+    l_full = glob.glob(f"{CSV_FOLDER}/YOUMAIL_NETCHANGE_*{today}*.txt")
+    l_tmp = []
+
+    for l in l_full:
+        with open(l) as f:
+            data = json.load(f)
+            for d in data['phoneNumbers']:
+                if d['investigationReasons']:
+                    for i in d['investigationReasons']:
+                        d[i['name']] = i['certainty']
+
+            #prepare dataframe
+            df = pd.DataFrame(data['phoneNumbers'])
+            df.drop('investigationReasons', axis=1, inplace=True)
+            df.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
+            df["Number"] = pd.to_numeric(df["Number"])
+
+            l_tmp.append(df)
+    
+    result = pd.concat(l_tmp, axis=0, ignore_index=True)
+
+    result.to_csv(filename_full_netchange, index=False)
+
+    logging.info(f"[NETCHANGE] FULL File \"{filename_full_netchange}\" saved to local filesystem")
+
+    return filename_full_netchange
 
 
 #upload a file to s3
