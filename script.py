@@ -47,13 +47,13 @@ def get_youmail_api_headers():
 def get_youmail_partial_list(datetime):
     
     try:
-        logging.info(f"[NETCHANGE] Downloading partial file (hourly change) from YOUMAIL api: datetime: {datetime}")
+        logging.info(f"[FULL_UPDATE] Downloading partial file (hourly change) from YOUMAIL api: datetime: {datetime}")
 
         headers = get_youmail_api_headers()
         response = requests.get(URL_YOUMAIL_API_PARTIAL_HOUR + datetime, headers=headers)
         result =  response.json()
 
-        logging.info(f"[NETCHANGE] Download Finished: totalPhoneNumbersCount = {result['totalPhoneNumbersCount']}")
+        logging.info(f"[FULL_UPDATE] Download Finished: totalPhoneNumbersCount = {result['totalPhoneNumbersCount']}")
 
         return result
 
@@ -144,6 +144,10 @@ def save_this_hour_partial_spam_list():
         #today = f'{dia}'
         #hour_to_filename = f'{dia}{hora}00'
 
+        if "000000Z" in hour:
+            logging.info(f"[FULL_UPDATE] Ignoring {hour}")
+            return
+
         #get the partial file
         diff = get_youmail_partial_list(hour)
 
@@ -161,109 +165,20 @@ def save_this_hour_partial_spam_list():
         df = pd.DataFrame(diff['phoneNumbers'])
         df.drop('investigationReasons', axis=1, inplace=True)
         df.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
-        
         df["Number"] = pd.to_numeric(df["Number"])
         
-        filename = CSV_FOLDER + "/" + YOUMAIL_PART_FILENAME + hour_to_filename + ".csv"
+        filename_full = CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME + today + ".csv"
+        df_full = pd.read_csv(filename_full)
+        df_full = df_full.append(df, ignore_index = True)
 
-        l_prev = glob.glob(f"{CSV_FOLDER}/NETCHANGE_*{today}*.csv")
-        l_tmp = []
+        df_full.to_csv(filename_full, index=False)
 
-        for l in l_prev:
-            if l == filename:
-                continue
-
-            tmp = pd.read_csv(l)
-            #tmp['ref'] = l
-            l_tmp.append(tmp)
-
-        if len(l_tmp) > 0:
-            df_prev = pd.concat(l_tmp, axis=0, ignore_index=True)
-
-            #calculate Operation field based on last full list (left join) 
-
-            #Add or Update
-            logging.info(f"[NETCHANGE] Getting added and modified numbers")
-            merge = df.merge(df_prev.drop_duplicates(), on=['Number'], how='left', indicator=True)
-            #df['Operation'] = merge.apply((lambda row: 'A' if row['_merge'] == 'left_only' else 'M'), axis=1)
-            merge = merge.query('_merge == \'left_only\'')[['Number', 'SpamScore_x', 'FraudProbability_x', 'TCPAFraudProbability_x']]
-            merge.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
-            merge['Operation'] = 'A'
-            base = merge
-
-            merge = df.merge(df_prev.drop_duplicates(), on=['Number'], how='left', indicator=True)
-            merge = merge.query('_merge != \'left_only\'')[['Number', 'SpamScore_x', 'FraudProbability_x', 'TCPAFraudProbability_x']]
-            merge.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
-            merge['Operation'] = 'M'
-            base = base.append(merge)
-
-            #merge.to_csv('files/merged.csv')
-
-            #Delete
-            logging.info(f"[NETCHANGE] Getting deleted number")
-            merge = df_prev.drop_duplicates().merge(df.drop_duplicates(), on=['Number'], how='left', indicator=True)
-            merge = merge.query('_merge == \'left_only\'')[['Number', 'SpamScore_x', 'FraudProbability_x', 'TCPAFraudProbability_x']]
-            merge.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
-            merge['Operation'] = 'D'
-            base = base.append(merge)
-
-            df = base
-
-            df_full = df_prev.append(df)
-
-        else:
-            df['Operation'] = 'A' #first hour
-            df_full = df
-            #df_full['ref'] = filename
-
-        df.drop_duplicates(inplace=True)
-        df_full.drop_duplicates(inplace=True)
-
-        df.to_csv(filename, index=False)
-        logging.info(f"[NETCHANGE] File \"{filename}\" saved to local filesystem")
-
-        filename_full_netchange = save_full_netchange(hour_to_filename)
-
-        return filename, filename_full_netchange
+        logging.info(f"[FULL_UPDATE] File \"{filename_full}\" saved to local filesystem")
+        return filename_full
     
     except Exception as e:
         logging.exception(e)
         raise SystemExit(e)
-
-
-def save_full_netchange(hour_to_filename):
-    today = hour_to_filename[0:-4]
-
-    filename_full_netchange = CSV_FOLDER + "/" + YOUMAIL_FULL_NETCHANGE_PART_FILENAME + hour_to_filename + ".csv"
-
-    logging.info(f"[NETCHANGE] Genarating full netchange to {hour_to_filename}")
-
-    l_full = glob.glob(f"{CSV_FOLDER}/YOUMAIL_NETCHANGE_*{today}*.txt")
-    l_tmp = []
-
-    for l in l_full:
-        with open(l) as f:
-            data = json.load(f)
-            for d in data['phoneNumbers']:
-                if d['investigationReasons']:
-                    for i in d['investigationReasons']:
-                        d[i['name']] = i['certainty']
-
-            #prepare dataframe
-            df = pd.DataFrame(data['phoneNumbers'])
-            df.drop('investigationReasons', axis=1, inplace=True)
-            df.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
-            df["Number"] = pd.to_numeric(df["Number"])
-
-            l_tmp.append(df)
-    
-    result = pd.concat(l_tmp, axis=0, ignore_index=True)
-
-    result.to_csv(filename_full_netchange, index=False)
-
-    logging.info(f"[NETCHANGE] FULL File \"{filename_full_netchange}\" saved to local filesystem")
-
-    return filename_full_netchange
 
 
 #upload a file to s3
@@ -309,16 +224,16 @@ def sync_full():
 def sync_partial():
     try:
         
-        logging.info("[NETCHANGE] Hourly Changes Sync starting...")
+        logging.info("[FULL_UPDATE] Hourly Changes Sync starting...")
 
-        partial_csv, full = save_this_hour_partial_spam_list()
+        full = save_this_hour_partial_spam_list()
         
-        result = upload_file(partial_csv, 'NETCHANGE')
-        result = upload_file(full, 'NETCHANGE_FULL')
+        if full is not None:
+            result = upload_file(full, 'FULL_UPDATE')
 
-        logging.info("[NETCHANGE] Hourly Changes Sync finished")
+        logging.info("[FULL_UPDATE] Hourly Changes Sync finished")
     
-        return result
+        return
 
     except Exception as e:
         logging.exception(e)
