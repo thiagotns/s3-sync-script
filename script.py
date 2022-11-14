@@ -9,11 +9,12 @@ import boto3
 import logging
 import glob
 
-os.chdir("/home/thiago/s3-sync-script/")
+dir_path = os.path.dirname(os.path.realpath(__file__))
 URL_YOUMAIL_API_LIST = "https://dataapi.youmail.com/directory/spammers/v2/partial/since/"
 URL_YOUMAIL_API_FULL = "https://dataapi.youmail.com/api/v3/spammerlist/full"
 URL_YOUMAIL_API_PARTIAL_HOUR = "https://dataapi.youmail.com/api/v3/spammerlist/partial/"
-CSV_FOLDER = "/home/thiago/s3-sync-script/files"
+CSV_FOLDER = f"{dir_path}/files"
+LOG_FOLDER = f"{dir_path}/log"
 YOUMAIL_FULL_FILENAME = "FULL_spam-number-file_"
 YOUMAIL_PART_FILENAME = "NETCHANGE_spam-number-file_"
 YOUMAIL_FULL_NETCHANGE_PART_FILENAME = "FULL_NETCHANGE_spam-number-file_"
@@ -104,14 +105,14 @@ def save_youmail_full():
 
         #transform investigationReasons data
         for d in data['phoneNumbers']:
-            if d['investigationReasons']:
+            if 'investigationReasons' in d:
                 for i in d['investigationReasons']:
                     d[i['name']] = i['certainty']
 
 
         df = pd.DataFrame(data['phoneNumbers'])
         df.drop('investigationReasons', axis=1, inplace=True)
-        df.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
+        df.columns = ['Number', 'SpamScore', 'FraudProbability', 'Unlawful', 'TCPAFraudProbability']
 
         filename = CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME + today + ".csv"
         
@@ -157,14 +158,14 @@ def save_this_hour_partial_spam_list():
         
         #transform investigationReasons data
         for d in diff['phoneNumbers']:
-            if d['investigationReasons']:
+            if 'investigationReasons' in d:
                 for i in d['investigationReasons']:
                     d[i['name']] = i['certainty']
 
         #prepare dataframe
         df = pd.DataFrame(diff['phoneNumbers'])
         df.drop('investigationReasons', axis=1, inplace=True)
-        df.columns = ['Number', 'SpamScore', 'FraudProbability', 'TCPAFraudProbability']
+        df.columns = ['Number', 'SpamScore', 'FraudProbability', 'Unlawful', 'TCPAFraudProbability']
         df["Number"] = pd.to_numeric(df["Number"])
         
         filename_full = CSV_FOLDER + "/" + YOUMAIL_FULL_FILENAME + today + ".csv"
@@ -314,6 +315,9 @@ def main(args):
 
 if __name__ == "__main__":
     
+    os.makedirs(LOG_FOLDER, exist_ok=True)
+    os.makedirs(CSV_FOLDER, exist_ok=True)
+
     hour_to_filename = datetime.now().strftime('%Y%m%d%H%M%S')
 
     prefix = sys.argv[1:][0] if 'FULL' in sys.argv[1:] or 'NETCHANGE' in sys.argv[1:] or 'CLEAN' in sys.argv[1:] else 'INVALID_PARAMETER'
@@ -321,7 +325,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, 
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         handlers=[
-                            logging.FileHandler(f"/home/thiago/s3-sync-script/log/s3-sync-youmail_{hour_to_filename}_{prefix}.log"),
+                            logging.FileHandler(f"{LOG_FOLDER}/s3-sync-youmail_{hour_to_filename}_{prefix}.log"),
                             logging.StreamHandler()
                         ])
 
