@@ -1,4 +1,4 @@
-# s3-sync-script
+# youmail-to-s3
 Python script to sync data from Youmail api to S3.
 
 ## How To Install 
