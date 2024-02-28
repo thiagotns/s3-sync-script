@@ -38,13 +38,13 @@ s3-sync-script/log
 ## Cron 
 Run FULL sync daylly (cat /etc/cron.d/full-youmail)
 ```
-0 0 * * * root python3 /home/thiago/s3-sync-script/script.py FULL
+0 0 * * * root python3 /var/apps/s3-sync-script/script.py FULL
 ```
 Run NETCHANGE sync hourly (/etc/cron.d/changelog-youmail)
 ```
-0 * * * * root python3 /home/thiago/s3-sync-script/script.py NETCHANGE
+0 * * * * root python3 /var/apps/s3-sync-script/script.py NETCHANGE
 ```
 Run CLEAN UP obsolete files (/etc/cron.d/clean-files-youmail)
 ```
-30 0 * * * root python3 /home/thiago/s3-sync-script/script.py CLEAN
+30 0 * * * root python3 /var/apps/s3-sync-script/script.py CLEAN
 ```
